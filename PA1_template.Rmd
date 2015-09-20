@@ -1,0 +1,149 @@
+---
+title: "PA1_template.Rmd"
+author: "Salah Uddin"
+date: "20 September 2015"
+output: html_document
+---
+
+#Loading and preprocessing the data
+```{r}
+
+data<- read.csv(file("activity.csv","r"))
+
+class(data[,2])
+
+data[,2]<- as.Date(data[,2])
+```
+#What is mean total number of steps taken per day?
+```{r}
+
+t<-tapply(data$steps, as.Date(data$date, format="%m/%d/%Y"), sum)
+perday<-t
+i=1
+while(i<=length(t)){
+        perday[i]<- t[[i]];
+        i=i+1;
+}
+
+library(ggplot2)
+
+udate<-unique(data$date)
+
+dat<-data.frame(perday,udate)
+
+
+
+library(scales)
+library(dplyr)
+
+
+g<-ggplot(data=dat,aes(x=udate,y=perday))+ geom_bar(stat="identity") + scale_x_date(labels=date_format("%Y-%b"),breaks="1 day") + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+print(g)
+
+mean(perday,na.rm = T)
+median(perday, na.rm = T)
+```
+#What is the average daily activity pattern?
+```{r}
+
+steps<-data$steps
+interval<-data$interval
+class(data$interval)
+groupbyinterval <-aggregate(steps ~ interval, data = data, mean)
+
+summary(groupbyinterval)
+
+
+plot(x=groupbyinterval$interval,y=groupbyinterval$steps, type = "l")
+apply(groupbyinterval, MARGIN = 2, function(x) max(x, na.rm=TRUE))
+
+```
+#Imputing missing values
+
+
+##creating a new data set my strategy will be to fill it with the mean
+
+```{r}
+
+
+na_rows<-data[!complete.cases(data),]
+
+non_na_rows<- data[complete.cases(data),]
+
+
+na_rows_new <- mutate(na_rows, steps=round(mean(groupbyinterval$steps)))
+
+newset<- rbind(na_rows_new,non_na_rows)
+
+
+data<-newset
+
+class(data[,2])
+
+data[,2]<- as.Date(data[,2])
+
+t<-tapply(data$steps, as.Date(data$date, format="%m/%d/%Y"), sum)
+
+
+
+
+i=1
+while(i<=length(t)){
+        perday[i]<- t[[i]];
+        i=i+1;
+}
+
+udate<-unique(data$date)
+
+dat<-data.frame(perday,udate)
+
+
+
+
+
+g<-ggplot(data=dat,aes(x=udate,y=perday))+ geom_bar(stat="identity") + scale_x_date(labels=date_format("%Y-%b"),breaks="1 day") + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+print(g)
+```
+# Dont take the date as it is automated by ggplot
+```{r}
+
+mean(perday,na.rm = T)
+median(perday, na.rm = T)
+```
+#Are there differences in activity patterns between weekdays and weekends?
+
+Not much difference
+```{r}
+
+library(timeDate)
+data$date<-as.Date(data$date)
+wdate<-isWeekday(data$date, wday=1:5)
+
+data<- data.frame(data,wdate)
+```
+#true means week days and false means weekend
+```{r}
+
+i=1
+while(i<=length(wdate)){
+        if(data$wdate[i]==T){
+                data$wdate[i]<- "WeekDay"
+                
+                
+        }else{
+                data$wdate[i]<- "WeekEnd"
+        }
+          i=i+1      
+        
+}
+
+data$wdate<- as.factor(data$wdate)
+
+steps<-data$steps
+interval<-data$interval
+
+winterval <-aggregate(steps ~ interval + wdate, data = data, mean)
+library(lattice)
+xyplot(winterval$steps ~ winterval$interval|winterval$wdate, winterval, type = "l", layout = c(1, 2))
+
+```
